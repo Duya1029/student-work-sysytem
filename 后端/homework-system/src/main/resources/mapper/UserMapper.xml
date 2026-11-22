@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 用户表 Mapper XML -->
+<mapper namespace="com.homework.mapper.UserMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="userResultMap" type="com.homework.entity.User">
+        <id property="userId" column="user_id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="realName" column="real_name"/>
+        <result property="role" column="role"/>
+        <result property="classId" column="class_id"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="createTime" column="create_time"/>
+        <result property="className" column="class_name"/>
+    </resultMap>
+
+    <!-- 公共列 -->
+    <sql id="baseColumns">
+        u.user_id, u.username, u.password, u.real_name, u.role,
+        u.class_id, u.student_no, u.create_time, c.class_name
+    </sql>
+
+    <!-- 关联查询：用户表 LEFT JOIN 班级表 -->
+    <sql id="joinClass">
+        FROM sys_user u
+        LEFT JOIN sys_class c ON u.class_id = c.class_id
+    </sql>
+
+    <!-- 根据用户名查询用户（登录用，不含班级名称） -->
+    <select id="selectByUsername" resultType="com.homework.entity.User">
+        SELECT user_id, username, password, real_name, role, class_id, student_no, create_time
+        FROM sys_user
+        WHERE username = #{username}
+    </select>
+
+    <!-- 根据用户ID查询用户信息（含班级名称） -->
+    <select id="selectById" resultType="com.homework.entity.User">
+        SELECT u.user_id, u.username, u.real_name, u.role, u.class_id, u.student_no,
+               u.create_time, c.class_name
+        <include refid="joinClass"/>
+        WHERE u.user_id = #{userId}
+    </select>
+
+    <!-- 分页查询用户列表（含班级名称） -->
+    <select id="selectList" resultMap="userResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinClass"/>
+        <where>
+            <if test="role != null and role != ''">
+                AND u.role = #{role}
+            </if>
+            <if test="realName != null and realName != ''">
+                AND u.real_name LIKE '%' + #{realName} + '%'
+            </if>
+            <if test="classId != null">
+                AND u.class_id = #{classId}
+            </if>
+        </where>
+        ORDER BY u.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 查询用户总数 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1) FROM sys_user
+        <where>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+            <if test="realName != null and realName != ''">
+                AND real_name LIKE '%' + #{realName} + '%'
+            </if>
+            <if test="classId != null">
+                AND class_id = #{classId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增用户 -->
+    <insert id="insert" parameterType="com.homework.entity.User" useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO sys_user (username, password, real_name, role, class_id, student_no)
+        VALUES (#{username}, #{password}, #{realName}, #{role}, #{classId}, #{studentNo})
+    </insert>
+
+    <!-- 修改用户 -->
+    <update id="update" parameterType="com.homework.entity.User">
+        UPDATE sys_user
+        <set>
+            <if test="username != null and username != ''">username = #{username},</if>
+            <if test="realName != null and realName != ''">real_name = #{realName},</if>
+            <if test="role != null and role != ''">role = #{role},</if>
+            <if test="classId != null">class_id = #{classId},</if>
+            <if test="studentNo != null">student_no = #{studentNo},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 修改密码 -->
+    <update id="updatePassword">
+        UPDATE sys_user SET password = #{password} WHERE user_id = #{userId}
+    </update>
+
+    <!-- 删除用户 -->
+    <delete id="deleteById">
+        DELETE FROM sys_user WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 查询所有教师 -->
+    <select id="selectTeachers" resultType="com.homework.entity.User">
+        SELECT user_id, username, real_name, role
+        FROM sys_user WHERE role = 'TEACHER'
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

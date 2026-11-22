@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 公告表 Mapper XML -->
+<mapper namespace="com.homework.mapper.AnnouncementMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="announcementResultMap" type="com.homework.entity.Announcement">
+        <id property="announceId" column="announce_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="publisherId" column="publisher_id"/>
+        <result property="publisherName" column="publisher_name"/>
+        <result property="createTime" column="create_time"/>
+        <result property="announceType" column="announce_type"/>
+        <result property="classId" column="class_id"/>
+        <result property="isPinned" column="is_pinned"/>
+    </resultMap>
+
+    <!-- 公共列（关联 sys_user 获取发布人姓名） -->
+    <sql id="baseColumns">
+        a.announce_id, a.title, a.content, a.publisher_id,
+        u.real_name AS publisher_name, a.create_time,
+        a.announce_type, a.class_id, a.is_pinned
+    </sql>
+
+    <sql id="joinUser">
+        FROM sys_announcement a
+        LEFT JOIN sys_user u ON a.publisher_id = u.user_id
+    </sql>
+
+    <!-- 查询全部公告 -->
+    <select id="getAllAnnouncements" resultMap="announcementResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinUser"/>
+        ORDER BY a.is_pinned DESC, a.create_time DESC
+    </select>
+
+    <!-- 根据ID查询公告 -->
+    <select id="getAnnouncementById" resultMap="announcementResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinUser"/>
+        WHERE a.announce_id = #{id}
+    </select>
+
+    <!-- 新增公告 -->
+    <insert id="insertAnnouncement" parameterType="com.homework.entity.Announcement" useGeneratedKeys="true" keyProperty="announceId">
+        INSERT INTO sys_announcement (title, content, publisher_id, create_time, announce_type, class_id, is_pinned)
+        VALUES (#{title}, #{content}, #{publisherId}, #{createTime},
+                <choose>
+                    <when test="announceType != null and announceType != ''">#{announceType}</when>
+                    <otherwise>'SYSTEM'</otherwise>
+                </choose>,
+                #{classId},
+                <choose>
+                    <when test="isPinned != null">#{isPinned}</when>
+                    <otherwise>0</otherwise>
+                </choose>)
+    </insert>
+
+    <!-- 修改公告 -->
+    <update id="updateAnnouncement" parameterType="com.homework.entity.Announcement">
+        UPDATE sys_announcement
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="announceType != null and announceType != ''">announce_type = #{announceType},</if>
+            <if test="classId != null">class_id = #{classId},</if>
+            <if test="isPinned != null">is_pinned = #{isPinned},</if>
+        </set>
+        WHERE announce_id = #{announceId}
+    </update>
+
+    <!-- 删除公告 -->
+    <delete id="deleteAnnouncement">
+        DELETE FROM sys_announcement WHERE announce_id = #{id}
+    </delete>
+
+</mapper>

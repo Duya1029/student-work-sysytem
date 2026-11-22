@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================
+     Tomcat server.xml 配置文件
+     用于外部 Tomcat 部署（非内嵌模式）
+     路径：{TOMCAT_HOME}/conf/server.xml
+     ============================================================ -->
+<Server port="8005" shutdown="SHUTDOWN">
+    <Listener className="org.apache.catalina.startup.VersionLoggerListener"/>
+    <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on"/>
+    <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener"/>
+    <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener"/>
+    <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener"/>
+
+    <GlobalNamingResources>
+        <Resource name="UserDatabase" auth="Container"
+                  type="org.apache.catalina.UserDatabase"
+                  description="User database that can be updated and saved"
+                  factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+                  pathname="conf/tomcat-users.xml"/>
+    </GlobalNamingResources>
+
+    <!-- Tomcat 服务 -->
+    <Service name="Catalina">
+        <!-- HTTP 连接器，监听 8080 端口 -->
+        <Connector port="8080" protocol="HTTP/1.1"
+                   connectionTimeout="20000"
+                   maxConnections="200"
+                   maxThreads="200"
+                   minSpareThreads="10"
+                   acceptCount="100"
+                   URIEncoding="UTF-8"
+                   redirectPort="8443"/>
+
+        <!-- 引擎 -->
+        <Engine name="Catalina" defaultHost="localhost">
+            <Host name="localhost" appBase="webapps"
+                  unpackWARs="true" autoDeploy="true">
+                <!-- 应用上下文配置 -->
+                <!-- 方式1：WAR 包自动部署，无需配置 -->
+                <!-- 方式2：指定应用路径（可选） -->
+                <!-- <Context path="/api" docBase="homework-system-1.0.0" reloadable="true"/> -->
+            </Host>
+        </Engine>
+    </Service>
+</Server>

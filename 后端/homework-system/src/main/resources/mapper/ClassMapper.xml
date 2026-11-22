@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 班级表 Mapper XML -->
+<mapper namespace="com.homework.mapper.ClassMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="classResultMap" type="com.homework.entity.Clazz">
+        <id property="classId" column="class_id"/>
+        <result property="className" column="class_name"/>
+        <result property="createTime" column="create_time"/>
+        <result property="studentCount" column="student_count"/>
+        <result property="headTeacherId" column="head_teacher_id"/>
+        <result property="headTeacherName" column="head_teacher_name"/>
+    </resultMap>
+
+    <!-- 分页查询班级列表（含学生人数、班主任名） -->
+    <select id="selectList" resultMap="classResultMap">
+        SELECT c.class_id, c.class_name, c.create_time, c.head_teacher_id,
+               u.real_name AS head_teacher_name,
+               (SELECT COUNT(1) FROM sys_user u2 WHERE u2.class_id = c.class_id AND u2.role = 'STUDENT') AS student_count
+        FROM sys_class c
+        LEFT JOIN sys_user u ON c.head_teacher_id = u.user_id
+        <where>
+            <if test="className != null and className != ''">
+                AND c.class_name LIKE '%' + #{className} + '%'
+            </if>
+        </where>
+        ORDER BY c.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 查询班级总数 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1) FROM sys_class
+        <where>
+            <if test="className != null and className != ''">
+                AND class_name LIKE '%' + #{className} + '%'
+            </if>
+        </where>
+    </select>
+
+    <!-- 查询所有班级（下拉列表用） -->
+    <select id="selectAll" resultType="com.homework.entity.Clazz">
+        SELECT class_id, class_name, create_time, head_teacher_id
+        FROM sys_class ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID查询班级 -->
+    <select id="selectById" resultType="com.homework.entity.Clazz">
+        SELECT class_id, class_name, create_time, head_teacher_id
+        FROM sys_class WHERE class_id = #{classId}
+    </select>
+
+    <!-- 新增班级 -->
+    <insert id="insert" parameterType="com.homework.entity.Clazz" useGeneratedKeys="true" keyProperty="classId">
+        INSERT INTO sys_class (class_name, head_teacher_id) VALUES (#{className}, #{headTeacherId})
+    </insert>
+
+    <!-- 修改班级 -->
+    <update id="update" parameterType="com.homework.entity.Clazz">
+        UPDATE sys_class
+        <set>
+            <if test="className != null and className != ''">class_name = #{className},</if>
+            <if test="headTeacherId != null">head_teacher_id = #{headTeacherId},</if>
+        </set>
+        WHERE class_id = #{classId}
+    </update>
+
+    <!-- 删除班级 -->
+    <delete id="deleteById">
+        DELETE FROM sys_class WHERE class_id = #{classId}
+    </delete>
+
+</mapper>

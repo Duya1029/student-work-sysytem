@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 作业表 Mapper XML -->
+<mapper namespace="com.homework.mapper.HomeworkMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="homeworkResultMap" type="com.homework.entity.Homework">
+        <id property="homeworkId" column="homework_id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="teacherId" column="teacher_id"/>
+        <result property="teacherName" column="teacher_name"/>
+        <result property="classId" column="class_id"/>
+        <result property="className" column="class_name"/>
+        <result property="deadline" column="deadline"/>
+        <result property="createTime" column="create_time"/>
+        <result property="attachment" column="attachment"/>
+        <result property="courseId" column="course_id"/>
+        <result property="courseName" column="course_name"/>
+    </resultMap>
+
+    <!-- 公共关联查询 -->
+    <sql id="joinAll">
+        FROM sys_homework h
+        LEFT JOIN sys_user u ON h.teacher_id = u.user_id
+        LEFT JOIN sys_class c ON h.class_id = c.class_id
+        LEFT JOIN sys_course co ON h.course_id = co.course_id
+    </sql>
+
+    <sql id="baseColumns">
+        h.homework_id, h.title, h.description, h.teacher_id,
+        u.real_name AS teacher_name, h.class_id,
+        c.class_name, h.deadline, h.create_time, h.attachment,
+        h.course_id, co.course_name
+    </sql>
+
+    <!-- 管理员视角：分页查询全部作业 -->
+    <select id="selectListForAdmin" resultMap="homeworkResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        <where>
+            <if test="className != null and className != ''">
+                AND c.class_name LIKE '%' + #{className} + '%'
+            </if>
+            <if test="teacherName != null and teacherName != ''">
+                AND u.real_name LIKE '%' + #{teacherName} + '%'
+            </if>
+        </where>
+        ORDER BY h.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 管理员视角：查询总数 -->
+    <select id="selectCountForAdmin" resultType="int">
+        SELECT COUNT(1)
+        <include refid="joinAll"/>
+        <where>
+            <if test="className != null and className != ''">
+                AND c.class_name LIKE '%' + #{className} + '%'
+            </if>
+            <if test="teacherName != null and teacherName != ''">
+                AND u.real_name LIKE '%' + #{teacherName} + '%'
+            </if>
+        </where>
+    </select>
+
+    <!-- 教师视角：分页查询我的作业 -->
+    <select id="selectListByTeacher" resultMap="homeworkResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE h.teacher_id = #{teacherId}
+        ORDER BY h.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 教师视角：查询总数 -->
+    <select id="selectCountByTeacher" resultType="int">
+        SELECT COUNT(1) FROM sys_homework WHERE teacher_id = #{teacherId}
+    </select>
+
+    <!-- 学生视角：查询我所在班级的作业列表（含我的提交状态） -->
+    <select id="selectListForStudent" resultMap="homeworkResultMap">
+        SELECT h.homework_id, h.title, h.description, h.teacher_id,
+               u.real_name AS teacher_name, h.class_id, c.class_name,
+               h.deadline, h.create_time, h.attachment,
+               h.course_id, co.course_name
+        FROM sys_homework h
+        LEFT JOIN sys_user u ON h.teacher_id = u.user_id
+        LEFT JOIN sys_class c ON h.class_id = c.class_id
+        LEFT JOIN sys_course co ON h.course_id = co.course_id
+        WHERE h.class_id = #{classId}
+        ORDER BY h.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 学生视角：查询总数 -->
+    <select id="selectCountForStudent" resultType="int">
+        SELECT COUNT(1) FROM sys_homework WHERE class_id = #{classId}
+    </select>
+
+    <!-- 根据ID查询作业详情 -->
+    <select id="selectById" resultMap="homeworkResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE h.homework_id = #{homeworkId}
+    </select>
+
+    <!-- 新增作业 -->
+    <insert id="insert" parameterType="com.homework.entity.Homework" useGeneratedKeys="true" keyProperty="homeworkId">
+        INSERT INTO sys_homework (title, description, teacher_id, class_id, deadline, attachment, course_id)
+        VALUES (#{title}, #{description}, #{teacherId}, #{classId}, #{deadline}, #{attachment}, #{courseId})
+    </insert>
+
+    <!-- 修改作业 -->
+    <update id="update" parameterType="com.homework.entity.Homework">
+        UPDATE sys_homework
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="description != null and description != ''">description = #{description},</if>
+            <if test="classId != null">class_id = #{classId},</if>
+            <if test="deadline != null">deadline = #{deadline},</if>
+            <if test="courseId != null">course_id = #{courseId},</if>
+        </set>
+        WHERE homework_id = #{homeworkId}
+    </update>
+
+    <!-- 删除作业 -->
+    <delete id="deleteById">
+        DELETE FROM sys_homework WHERE homework_id = #{homeworkId}
+    </delete>
+
+</mapper>

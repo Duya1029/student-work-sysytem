@@ -1,0 +1,71 @@
+# ============================================================
+# 学生作业管理系统 - Spring Boot 应用配置文件
+# ============================================================
+
+server:
+  port: 8090                          # Tomcat 端口（原8080被占用，改为8090）
+  servlet:
+    context-path: /                   # 上下文路径
+    encoding:
+      charset: UTF-8                  # 字符编码
+      enabled: true
+      force: true
+
+spring:
+  # 应用名称
+  application:
+    name: homework-system
+
+  # Jackson 日期格式化
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+  # 数据源配置 - SQL Server 2022
+  datasource:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    # 连接字符串：localhost = 服务器地址，1433 = SQL Server 默认端口，homework_db = 数据库名
+    # encrypt=false 关闭加密（开发环境），trustServerCertificate=true 信任证书
+    url: jdbc:sqlserver://localhost:52128;databaseName=homework_db;encrypt=false;trustServerCertificate=true
+    username: sa                       # 数据库用户名
+    password: 123456                   # 数据库密码
+    hikari:
+      minimum-idle: 5                # 最小空闲连接数
+      maximum-pool-size: 20          # 最大连接数
+      idle-timeout: 30000           # 空闲超时（毫秒）
+      connection-timeout: 30000     # 连接超时（毫秒）
+      max-lifetime: 120000          # 连接最大生命周期（毫秒）
+
+# MyBatis 配置
+mybatis:
+  # Mapper XML 文件位置
+  mapper-locations: classpath:mapper/*.xml
+  # 实体类别名包
+  type-aliases-package: com.homework.entity
+  configuration:
+    # 驼峰命名转换（数据库 user_id → Java userId）
+    map-underscore-to-camel-case: true
+    # 控制台打印 SQL（开发环境调试用，生产环境关闭）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 日志配置
+logging:
+  level:
+    com.homework: DEBUG              # 项目包日志级别
+    org.mybatis: DEBUG               # MyBatis 日志
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 自定义 JWT 配置
+jwt:
+  # JWT 密钥（生产环境请更换为更复杂的密钥）
+  secret: ZGV3ZXdlaW5pZGZ3ZXc2Nzg5dzRyZjg5c2RmaW93ZWY4OXNkZmVyd2Vy
+  # Token 有效期（毫秒）：7200000 = 2 小时
+  expiration: 7200000
+
+# 跨域配置
+cors:
+  allowed-origins: "http://localhost:80"   # 前端 Nginx 地址
+  allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  allowed-headers: "*"
+  allow-credentials: true

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 课程表 Mapper XML -->
+<mapper namespace="com.homework.mapper.CourseMapper">
+
+    <!-- 结果映射：包含教师名、学期名、班级列表（聚合字符串） -->
+    <resultMap id="courseResultMap" type="com.homework.entity.Course">
+        <id property="courseId" column="course_id"/>
+        <result property="courseName" column="course_name"/>
+        <result property="courseCode" column="course_code"/>
+        <result property="credits" column="credits"/>
+        <result property="hours" column="hours"/>
+        <result property="teacherId" column="teacher_id"/>
+        <result property="teacherName" column="teacher_name"/>
+        <result property="semesterId" column="semester_id"/>
+        <result property="semesterName" column="semester_name"/>
+        <result property="classIds" column="class_ids"/>
+        <result property="classNames" column="class_names"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 公共列（关联教师、学期，聚合班级） -->
+    <sql id="baseColumns">
+        c.course_id, c.course_name, c.course_code, c.credits, c.hours,
+        c.teacher_id, u.real_name AS teacher_name,
+        c.semester_id, s.semester_name AS semester_name,
+        c.create_time,
+        STUFF((SELECT ',' + CAST(cc.class_id AS VARCHAR(20))
+               FROM sys_course_class cc
+               WHERE cc.course_id = c.course_id
+               FOR XML PATH('')), 1, 1, '') AS class_ids,
+        STUFF((SELECT ',' + cl.class_name
+               FROM sys_course_class cc
+               LEFT JOIN sys_class cl ON cc.class_id = cl.class_id
+               WHERE cc.course_id = c.course_id
+               FOR XML PATH('')), 1, 1, '') AS class_names
+    </sql>
+
+    <!-- 公共关联 -->
+    <sql id="joinAll">
+        FROM sys_course c
+        LEFT JOIN sys_user u ON c.teacher_id = u.user_id
+        LEFT JOIN sys_semester s ON c.semester_id = s.semester_id
+    </sql>
+
+    <!-- 分页查询课程列表 -->
+    <select id="selectList" resultMap="courseResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        <where>
+            <if test="courseName != null and courseName != ''">
+                AND c.course_name LIKE '%' + #{courseName} + '%'
+            </if>
+            <if test="teacherId != null">
+                AND c.teacher_id = #{teacherId}
+            </if>
+            <if test="semesterId != null">
+                AND c.semester_id = #{semesterId}
+            </if>
+        </where>
+        ORDER BY c.create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 查询课程总数 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1)
+        <include refid="joinAll"/>
+        <where>
+            <if test="courseName != null and courseName != ''">
+                AND c.course_name LIKE '%' + #{courseName} + '%'
+            </if>
+            <if test="teacherId != null">
+                AND c.teacher_id = #{teacherId}
+            </if>
+            <if test="semesterId != null">
+                AND c.semester_id = #{semesterId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据教师ID查询课程列表 -->
+    <select id="selectByTeacherId" resultMap="courseResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE c.teacher_id = #{teacherId}
+        ORDER BY c.create_time DESC
+    </select>
+
+    <!-- 根据班级ID查询课程列表（通过 sys_course_class 关联） -->
+    <select id="selectByClassId" resultMap="courseResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        INNER JOIN sys_course_class cc ON c.course_id = cc.course_id
+        WHERE cc.class_id = #{classId}
+        ORDER BY c.create_time DESC
+    </select>
+
+    <!-- 根据ID查询课程 -->
+    <select id="selectById" resultMap="courseResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE c.course_id = #{courseId}
+    </select>
+
+    <!-- 新增课程 -->
+    <insert id="insert" parameterType="com.homework.entity.Course" useGeneratedKeys="true" keyProperty="courseId">
+        INSERT INTO sys_course (course_name, course_code, credits, hours, teacher_id, semester_id, create_time)
+        VALUES (#{courseName}, #{courseCode}, #{credits}, #{hours}, #{teacherId}, #{semesterId}, SYSUTCDATETIME())
+    </insert>
+
+    <!-- 修改课程 -->
+    <update id="update" parameterType="com.homework.entity.Course">
+        UPDATE sys_course
+        <set>
+            <if test="courseName != null and courseName != ''">course_name = #{courseName},</if>
+            <if test="courseCode != null">course_code = #{courseCode},</if>
+            <if test="credits != null">credits = #{credits},</if>
+            <if test="hours != null">hours = #{hours},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
+            <if test="semesterId != null">semester_id = #{semesterId},</if>
+        </set>
+        WHERE course_id = #{courseId}
+    </update>
+
+    <!-- 删除课程 -->
+    <delete id="deleteById">
+        DELETE FROM sys_course WHERE course_id = #{courseId}
+    </delete>
+
+    <!-- 删除课程关联的所有班级记录 -->
+    <delete id="deleteCourseClasses">
+        DELETE FROM sys_course_class WHERE course_id = #{courseId}
+    </delete>
+
+    <!-- 新增课程-班级关联 -->
+    <insert id="insertCourseClass">
+        INSERT INTO sys_course_class (course_id, class_id) VALUES (#{courseId}, #{classId})
+    </insert>
+
+</mapper>

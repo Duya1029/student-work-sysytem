@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 系统日志表 Mapper XML -->
+<mapper namespace="com.homework.mapper.SystemLogMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="logResultMap" type="com.homework.entity.SystemLog">
+        <id property="logId" column="log_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="username" column="username"/>
+        <result property="operation" column="operation"/>
+        <result property="method" column="method"/>
+        <result property="params" column="params"/>
+        <result property="ip" column="ip"/>
+        <result property="logType" column="log_type"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 分页查询日志列表 -->
+    <select id="selectList" resultMap="logResultMap">
+        SELECT log_id, user_id, username, operation, method, params, ip, log_type, create_time
+        FROM sys_log
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE '%' + #{username} + '%'
+            </if>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{pageSize} ROWS ONLY
+    </select>
+
+    <!-- 查询日志总数 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1) FROM sys_log
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE '%' + #{username} + '%'
+            </if>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+        </where>
+    </select>
+
+    <!-- 新增日志 -->
+    <insert id="insert" parameterType="com.homework.entity.SystemLog" useGeneratedKeys="true" keyProperty="logId">
+        INSERT INTO sys_log (user_id, username, operation, method, params, ip, log_type, create_time)
+        VALUES (#{userId}, #{username}, #{operation}, #{method}, #{params}, #{ip},
+                <choose>
+                    <when test="logType != null and logType != ''">#{logType}</when>
+                    <otherwise>'OPERATION'</otherwise>
+                </choose>,
+                SYSUTCDATETIME())
+    </insert>
+
+</mapper>

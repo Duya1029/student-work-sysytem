@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 作业提交表 Mapper XML -->
+<mapper namespace="com.homework.mapper.SubmissionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="submissionResultMap" type="com.homework.entity.Submission">
+        <id property="submissionId" column="submission_id"/>
+        <result property="homeworkId" column="homework_id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="studentName" column="student_name"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="className" column="class_name"/>
+        <result property="content" column="content"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="score" column="score"/>
+        <result property="comment" column="comment"/>
+        <result property="gradeTime" column="grade_time"/>
+        <result property="homeworkTitle" column="homework_title"/>
+        <result property="attachment" column="attachment"/>
+        <result property="isReturned" column="is_returned"/>
+        <result property="isExcellent" column="is_excellent"/>
+    </resultMap>
+
+    <!-- 公共列 -->
+    <sql id="baseColumns">
+        s.submission_id, s.homework_id, s.student_id,
+        u.real_name AS student_name, u.student_no AS student_no,
+        c.class_name, s.content, s.submit_time,
+        s.score, s.comment, s.grade_time, s.attachment,
+        h.title AS homework_title,
+        s.is_returned, s.is_excellent
+    </sql>
+
+    <!-- 公共关联 -->
+    <sql id="joinAll">
+        FROM sys_submission s
+        LEFT JOIN sys_user u ON s.student_id = u.user_id
+        LEFT JOIN sys_class c ON u.class_id = c.class_id
+        LEFT JOIN sys_homework h ON s.homework_id = h.homework_id
+    </sql>
+
+    <!-- 查询某作业的所有提交记录（教师/管理员视角） -->
+    <select id="selectByHomeworkId" resultMap="submissionResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE s.homework_id = #{homeworkId}
+        ORDER BY s.submit_time DESC
+    </select>
+
+    <!-- 查询某学生的提交记录（通过作业ID和学生ID） -->
+    <select id="selectByHomeworkAndStudent" resultMap="submissionResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE s.homework_id = #{homeworkId} AND s.student_id = #{studentId}
+    </select>
+
+    <!-- 根据提交ID查询提交记录 -->
+    <select id="selectById" resultMap="submissionResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE s.submission_id = #{submissionId}
+    </select>
+
+    <!-- 查询某学生的历史成绩（已批改的提交记录） -->
+    <select id="selectByStudentId" resultMap="submissionResultMap">
+        SELECT <include refid="baseColumns"/>
+        <include refid="joinAll"/>
+        WHERE s.student_id = #{studentId} AND s.score IS NOT NULL
+        ORDER BY s.grade_time DESC
+    </select>
+
+    <!-- 查询某学生的提交总数（含未批改） -->
+    <select id="selectCountByStudent" resultType="int">
+        SELECT COUNT(1) FROM sys_submission WHERE student_id = #{studentId}
+    </select>
+
+    <!-- 查询某学生的已批改提交数 -->
+    <select id="selectGradedCountByStudent" resultType="int">
+        SELECT COUNT(1) FROM sys_submission WHERE student_id = #{studentId} AND score IS NOT NULL
+    </select>
+
+    <!-- 新增提交 -->
+    <insert id="insert" parameterType="com.homework.entity.Submission" useGeneratedKeys="true" keyProperty="submissionId">
+        INSERT INTO sys_submission (homework_id, student_id, content, submit_time, attachment, is_returned, is_excellent)
+        VALUES (#{homeworkId}, #{studentId}, #{content}, #{submitTime}, #{attachment},
+                <choose>
+                    <when test="isReturned != null">#{isReturned}</when>
+                    <otherwise>0</otherwise>
+                </choose>,
+                <choose>
+                    <when test="isExcellent != null">#{isExcellent}</when>
+                    <otherwise>0</otherwise>
+                </choose>)
+    </insert>
+
+    <!-- 更新提交内容（重新提交） -->
+    <update id="updateContent" parameterType="com.homework.entity.Submission">
+        UPDATE sys_submission
+        SET content = #{content},
+            submit_time = #{submitTime},
+            score = NULL,
+            comment = NULL,
+            grade_time = NULL,
+            is_returned = 0,
+            is_excellent = 0
+        WHERE submission_id = #{submissionId}
+    </update>
+
+    <!-- 批改作业 -->
+    <update id="updateGrade">
+        UPDATE sys_submission
+        SET score = #{score},
+            comment = #{comment},
+            grade_time = SYSUTCDATETIME()
+        WHERE submission_id = #{submissionId}
+    </update>
+
+    <!-- 批改作业（扩展版：包含是否打回、是否优秀） -->
+    <update id="updateGradeExt">
+        UPDATE sys_submission
+        SET score = #{score},
+            comment = #{comment},
+            is_returned = #{isReturned},
+            is_excellent = #{isExcellent},
+            grade_time = SYSUTCDATETIME()
+        WHERE submission_id = #{submissionId}
+    </update>
+
+    <!-- 删除提交记录 -->
+    <delete id="deleteById">
+        DELETE FROM sys_submission WHERE submission_id = #{submissionId}
+    </delete>
+
+</mapper>
