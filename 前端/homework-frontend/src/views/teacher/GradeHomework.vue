@@ -13,6 +13,17 @@
         </div>
       </template>
 
+      <!-- 未指定作业时：显示作业选择器 -->
+      <div class="hw-selector" v-if="!homeworkId">
+        <span class="selector-label">选择要批改的作业：</span>
+        <el-select v-model="selectedHomeworkId" placeholder="请选择作业" class="selector-input" @change="handleSelectHomework">
+          <el-option v-for="hw in homeworkOptions" :key="hw.homeworkId" :label="hw.title" :value="hw.homeworkId" />
+        </el-select>
+        <el-empty v-if="!loading && homeworkOptions.length === 0" description="暂无已发布的作业" :image-size="80" />
+      </div>
+
+      <!-- 已指定作业时：显示作业信息与提交列表 -->
+      <template v-else>
       <!-- 作业基本信息描述列表 -->
       <el-descriptions :column="2" border class="hw-desc">
         <!-- 作业标题 -->
@@ -70,6 +81,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </template>
     </el-card>
 
     <!-- 批改弹窗 -->
@@ -129,7 +141,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
-import { getTeacherSubmissions, gradeHomework } from '@/api'
+import { getTeacherSubmissions, gradeHomework, getMyHomeworkList } from '@/api'
 import request from '@/utils/request'
 
 // 路由对象
@@ -142,6 +154,12 @@ const homework = ref({})
 const submissionList = ref([])
 // 批改弹窗显示状态
 const gradeDialogVisible = ref(false)
+// 当前作业ID：路由参数必须是纯数字才有效，否则视为未指定
+const homeworkId = ref(/^\d+$/.test(String(route.params.homeworkId || '')) ? String(route.params.homeworkId) : '')
+// 可选作业列表
+const homeworkOptions = ref([])
+// 下拉框选中的作业ID
+const selectedHomeworkId = ref('')
 
 // 批改表单数据
 const gradeForm = reactive({
@@ -168,17 +186,39 @@ const formatDate = (dateStr) => dateStr ? dateStr.replace('T', ' ').substring(0,
 
 // 加载作业信息与提交列表
 const loadData = async () => {
+  // 没有作业ID时不请求后端，避免后端参数转换报错
+  if (!homeworkId.value) return
   loading.value = true
   try {
-    // 获取作业信息（通过管理员接口复用）
-    const hwRes = await request.get('/admin/homework/list', { params: { pageNum: 1, pageSize: 100 } })
-    const found = hwRes.data.list.find(h => h.homeworkId == route.params.homeworkId)
+    // 加载教师自己的作业列表（同时用于匹配作业信息）
+    if (homeworkOptions.value.length === 0) {
+      const listRes = await getMyHomeworkList({ pageNum: 1, pageSize: 100 })
+      homeworkOptions.value = listRes.data.list || []
+    }
+    // 从列表中匹配当前作业信息
+    const found = homeworkOptions.value.find(h => String(h.homeworkId) === homeworkId.value)
     if (found) homework.value = found
 
     // 获取提交列表
-    const res = await getTeacherSubmissions(route.params.homeworkId)
-    submissionList.value = res.data
+    const res = await getTeacherSubmissions(homeworkId.value)
+    submissionList.value = res.data || []
   } catch (error) { console.error(error) } finally { loading.value = false }
+}
+
+// 加载可选作业列表（路由未指定作业时使用）
+const loadHomeworkOptions = async () => {
+  loading.value = true
+  try {
+    const res = await getMyHomeworkList({ pageNum: 1, pageSize: 100 })
+    homeworkOptions.value = res.data.list || []
+  } catch (error) { console.error(error) } finally { loading.value = false }
+}
+
+// 下拉选择作业后加载该作业的提交列表
+const handleSelectHomework = (id) => {
+  homeworkId.value = String(id)
+  selectedHomeworkId.value = id
+  loadData()
 }
 
 // 打开批改弹窗，填充学生提交数据
@@ -233,8 +273,14 @@ const handleGrade = async () => {
   } catch (error) { console.error(error) }
 }
 
-// 组件挂载时加载数据
-onMounted(() => { loadData() })
+// 组件挂载时：有作业ID直接加载，没有则加载作业下拉列表
+onMounted(() => {
+  if (homeworkId.value) {
+    loadData()
+  } else {
+    loadHomeworkOptions()
+  }
+})
 </script>
 
 <style scoped>
@@ -252,6 +298,26 @@ onMounted(() => { loadData() })
   border: none;
   box-shadow: 0 4px 16px rgba(29, 78, 216, 0.12);
   overflow: hidden;
+}
+
+/* 作业选择区域 */
+.hw-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0 16px;
+}
+
+/* 选择区域标签文字 */
+.selector-label {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* 作业下拉框宽度 */
+.selector-input {
+  width: 320px;
 }
 
 /* 卡片头部渐变背景 */

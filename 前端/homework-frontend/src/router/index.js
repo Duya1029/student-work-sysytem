@@ -95,7 +95,7 @@ const routes = [
         meta: { title: '发布作业', role: 'TEACHER' }
       },
       {
-        path: 'teacher/grade',
+        path: 'teacher/grade/:homeworkId?',
         name: 'TeacherGrade',
         component: () => import('@/views/teacher/GradeHomework.vue'),
         meta: { title: '作业批改', role: 'TEACHER' }
