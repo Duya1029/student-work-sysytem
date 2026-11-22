@@ -20,7 +20,7 @@
 # 星曜数字化管理平台
 
 ## 在线体验
-公网访问地址（任意网络可用，无需同一 WiFi）：https://32d429a3.r49.cpolar.top
+公网访问地址（任意网络可用，无需同一 WiFi）：https://duya1029.github.io/xingyao-platform/
 
 > 同样由 cpolar 内网穿透生成，需保证电脑开机；免费版每次重启隧道后地址会变化。
 
